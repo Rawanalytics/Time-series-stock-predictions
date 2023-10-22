@@ -1,0 +1,82 @@
+---
+title: "Arima Model for Stock Prediction"
+author: "Rawi Baransy"
+date: "2023-10-22"
+output: pdf_document
+---
+
+
+```{r}
+#load all packages
+library(BatchGetSymbols)
+library(quantmod)
+library(forecast)
+library(ggplot2)
+
+#load S&P500 stock symbols
+sp500 <- GetSP500Stocks()
+
+name = sp500$Tickers
+name[which(name == "BRK.B")] = "BRK-B"
+name[which(name == "BF.B")] = "BF-B"
+
+
+#Create vector to keep track of best stocks
+arr = 0
+
+#create a loop to fit arima model on all stocks
+for(i in 1:length(name)){
+  
+  stock = as.data.frame(getSymbols(name[i], to = (Sys.Date()-10), env = NULL))
+  
+  #set prediction interval
+  term = 30
+  
+  #stock closing price 
+  Price = stock[,4]
+  
+  #fit model and get forecast
+  fit_model = auto.arima(Price, seasonal = TRUE)      
+  
+  fcast= forecast(fit_model, h = term)
+  
+
+  
+  
+  #find which stocks are optimal
+    if(fcast$lower[term,1]  >= Price[length(Price)]){
+      arr[i] = 1 
+    }else{
+      arr[i] = 0
+    }
+  #track how long program is running
+    # print(i)
+}
+
+#find optimal stock index
+name[which(arr == 1)]
+
+
+#plot results
+if(length(which(arr == 1) >0)){
+  for(j in seq_along(which(arr == 1)))
+    
+  stock = as.data.frame(getSymbols(name[which(arr == 1)][j], to = (Sys.Date()-10), env = NULL))
+  term = 30
+  
+  Price = stock[1:(nrow(stock)),4]
+  
+  fit_model = auto.arima(Price, seasonal = TRUE)      
+  
+  fcast= forecast(fit_model, h = term)
+  
+  autoplot(fcast)+
+    autolayer(ts(stock[,4]), series="Data")+ 
+    autolayer(fcast$mean, series="Forcast")+
+    coord_cartesian(xlim = c(nrow(stock)-100,(nrow(stock)+term)), ylim = c(0,Price[(nrow(stock)+50)]))
+
+}
+```
+
+
+
